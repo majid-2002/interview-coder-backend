@@ -84,6 +84,7 @@ app.post("/api/extract", async (req: any, res: any) => {
               role: "system",
               content:
                 "You are an AI that extracts structured problem statements from images containing coding problems. The image may sometimes lack a full problem name and only include elements like class names or function names. Extract and return a JSON object with the problem details following the given structure." +
+                "Strictly ensure to return the response in this given format" +
                 JSON.stringify({
                   problem_statement: "string",
                   input_format: {
@@ -142,6 +143,8 @@ app.post("/api/generate", async (req: any, res: any) => {
   try {
     const { problemInfo, language } = req.body;
 
+    console.log(problemInfo);
+
     if (!problemInfo) {
       return res.status(400).json({ error: "Problem info is required" });
     }
@@ -160,24 +163,61 @@ app.post("/api/generate", async (req: any, res: any) => {
             {
               role: "system",
               content:
-                "Solve the given programming problem efficiently and return JSON in the specified format.",
+                "Solve the given programming problem efficiently and return JSON in the specified format. The code should have commented explanations for each step",
             },
             {
               role: "user",
-              content: `Solve this problem using ${language}: ${problemInfo}.\n\n
-                        Format the response strictly as:\n
-                        {
-                          "code": "<code>",
-                          "thoughts": ["<thought 1>", "<thought 2>", "<thought 3>"],
-                          "time_complexity": "<time complexity>",
-                          "space_complexity": "<space complexity>"
-                        } 
-                          
-                        the thoughts should returns an array of setences of thoughts on solving the problem in 3 to 5 steps.
-                        the time_complexity and space_compexity should return a sentence of the complexity and why do we have that complexity in the code.
-
-                        eg: O(n log n), where n is the number of intervals, due to sorting step.
-                        `,
+              content: `Solve this problem using ${language}: 
+            
+              Problem Statement: ${problemInfo.problem_statement}
+            
+              Input Format: ${JSON.stringify(problemInfo.input_format, null, 2)}
+            
+              Output Format: ${JSON.stringify(
+                problemInfo.output_format,
+                null,
+                2
+              )}
+            
+              Complexity: ${JSON.stringify(problemInfo.complexity, null, 2)}
+            
+              Test Cases: ${JSON.stringify(problemInfo.test_cases, null, 2)}
+            
+              Validation Type: ${problemInfo.validation_type}
+            
+              Difficulty: ${problemInfo.difficulty}
+            
+              \n\nFormat the response strictly as:\n
+              {
+                "code": "<code>",
+                "thoughts": [
+                  "<thought 1>",
+                  "<thought 2>",
+                  "<thought 3>"
+                ],
+                "time_complexity": "<time complexity>",
+                "space_complexity": "<space complexity>"
+              } 
+            
+              The 'thoughts' field should return an array of 3 to 5 sentences explaining the approach to solving the problem step by step.
+            
+              The 'time_complexity' and 'space_complexity' fields should return a sentence explaining the respective complexity and why the code has that complexity.
+            
+              Example format:
+              {
+                "code": "def merge(intervals): ...",
+                "thoughts": [
+                  "First, check if the input list is empty and return an empty list.",
+                  "Next, sort the intervals based on their start values.",
+                  "Iterate through the sorted list and merge overlapping intervals.",
+                  "Use a result list to store merged intervals.",
+                  "Return the merged intervals at the end."
+                ],
+                "time_complexity": "O(n log n), where n is the number of intervals, due to the sorting step.",
+                "space_complexity": "O(n), where n is the number of intervals, as we need to store the merged intervals in a new list."
+              }
+            
+              Ensure that the response follows this exact JSON structure. and also ensure that `,
             },
           ],
         }),
