@@ -18,8 +18,8 @@ This is a backend implementation for interview coder, a platform that generates 
 ### Setup
 1. Clone the repository:
    ```sh
-   git clone https://github.com/majid-2002/interview-coder-no-sub-backend.git
-   interview-coder-no-sub-backend
+   git clone https://github.com/majid-2002/interview-coder-backend.git
+   interview-coder-backend
    ```
 2. Install dependencies:
    ```sh
