@@ -14,7 +14,10 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(",") || ["http://localhost:5000"],
+  methods: ["GET", "POST"],
+}));
 
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "50mb" }));
@@ -82,7 +85,7 @@ app.post("/api/extract", async (req: any, res: any) => {
             {
               role: "system",
               content:
-                "You are an AI that extracts structured problem statements from images containing coding problems. The image may sometimes lack a full problem name and only include elements like class names or function names of the problm. Extract and return a JSON object with the problem details following the given structure understanding the problem." +
+                "You are an AI that extracts structured problem statements from images containing coding problems. The image may sometimes lack a full problem details and only include elements like class names or function names of the problem. Extract and return a JSON object with the problem details following the given structure by understanding the problem." +
                 "Strictly ensure to return the response in this given format" +
                 JSON.stringify({
                   problem_statement: "string",
@@ -131,7 +134,6 @@ app.post("/api/extract", async (req: any, res: any) => {
         .replace(/```json|```/g, "")
         .trim()
     );
-
 
     return res.json({ problemInfo: extractedProblemInfo, language });
   } catch (error: any) {
@@ -248,6 +250,22 @@ app.post("/api/generate", async (req: any, res: any) => {
     return res.status(500).json({ error: "Failed to generate solution" });
   }
 });
+
+// app.use((err, req, res, next) => {
+//   logger.error("Unhandled error:", err);
+//   res.status(500).json({ error: "Internal Server Error" });
+// });
+
+// Graceful shutdown
+// process.on("uncaughtException", (err) => {
+//   logger.error("Uncaught Exception:", err);
+//   process.exit(1);
+// });
+
+// process.on("unhandledRejection", (reason) => {
+//   logger.error("Unhandled Rejection:", reason);
+//   process.exit(1);
+// });
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
