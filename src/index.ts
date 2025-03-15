@@ -48,7 +48,6 @@ async function compressImage(base64String) {
 
 app.post("/api/extract", async (req: any, res: any) => {
   try {
-    console.log("Extracting problem info from image...");
     const { imageDataList, language } = req.body;
 
     if (!imageDataList || imageDataList.length === 0) {
@@ -78,12 +77,12 @@ app.post("/api/extract", async (req: any, res: any) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "openai/gpt-4.5-preview",
+          model: "openai/gpt-4o-2024-11-20",
           messages: [
             {
               role: "system",
               content:
-                "You are an AI that extracts structured problem statements from images containing coding problems. The image may sometimes lack a full problem name and only include elements like class names or function names. Extract and return a JSON object with the problem details following the given structure." +
+                "You are an AI that extracts structured problem statements from images containing coding problems. The image may sometimes lack a full problem name and only include elements like class names or function names of the problm. Extract and return a JSON object with the problem details following the given structure understanding the problem." +
                 "Strictly ensure to return the response in this given format" +
                 JSON.stringify({
                   problem_statement: "string",
@@ -126,11 +125,13 @@ app.post("/api/extract", async (req: any, res: any) => {
     );
 
     const openAiResponseJson = await openAiResponse.json();
+
     const extractedProblemInfo: ProblemStatementData = JSON.parse(
       openAiResponseJson.choices[0].message.content
+        .replace(/```json|```/g, "")
+        .trim()
     );
 
-    console.log("Extracted problem info:", extractedProblemInfo);
 
     return res.json({ problemInfo: extractedProblemInfo, language });
   } catch (error: any) {
@@ -141,11 +142,24 @@ app.post("/api/extract", async (req: any, res: any) => {
 
 app.post("/api/generate", async (req: any, res: any) => {
   try {
-    const { problemInfo, language } = req.body;
+    const {
+      problem_statement,
+      input_format,
+      test_cases,
+      validation_type,
+      difficulty,
+      language,
+      output_format,
+    } = req.body;
 
-    console.log(problemInfo);
-
-    if (!problemInfo) {
+    if (
+      !problem_statement ||
+      !input_format ||
+      !test_cases ||
+      !validation_type ||
+      !difficulty ||
+      !language
+    ) {
       return res.status(400).json({ error: "Problem info is required" });
     }
 
@@ -158,36 +172,30 @@ app.post("/api/generate", async (req: any, res: any) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "openai/gpt-4.5-preview",
+          model: "openai/gpt-4o-2024-11-20",
           messages: [
             {
               role: "system",
               content:
-                "Solve the given programming problem efficiently and return JSON in the specified format. The code should have commented explanations for each step",
+                "You are programming problem solver that gives optimized and efficent solution for a problem. The code returned should be well commented and have explanations for each step",
             },
             {
               role: "user",
               content: `Solve this problem using ${language}: 
             
-              Problem Statement: ${problemInfo.problem_statement}
+              Problem Statement: ${problem_statement}
             
-              Input Format: ${JSON.stringify(problemInfo.input_format, null, 2)}
+              Input Format: ${JSON.stringify(input_format, null, 2)}
             
-              Output Format: ${JSON.stringify(
-                problemInfo.output_format,
-                null,
-                2
-              )}
+              Output Format: ${JSON.stringify(output_format, null, 2)}
             
-              Complexity: ${JSON.stringify(problemInfo.complexity, null, 2)}
+              Test Cases: ${JSON.stringify(test_cases, null, 2)}
             
-              Test Cases: ${JSON.stringify(problemInfo.test_cases, null, 2)}
+              Validation Type: ${validation_type}
             
-              Validation Type: ${problemInfo.validation_type}
+              Difficulty: ${difficulty}
             
-              Difficulty: ${problemInfo.difficulty}
-            
-              \n\nFormat the response strictly as:\n
+              \n\nExample Format the response strictly as:\n
               {
                 "code": "<code>",
                 "thoughts": [
@@ -199,7 +207,7 @@ app.post("/api/generate", async (req: any, res: any) => {
                 "space_complexity": "<space complexity>"
               } 
             
-              The 'thoughts' field should return an array of 3 to 5 sentences explaining the approach to solving the problem step by step.
+              The 'thoughts' field should return an array of 3 to 5 small sentences explaining the approach to solving the problem step by step. When explaining the code, say sentences in 'I' form, e.g., 'I first check if the input list is empty and return an empty list.'
             
               The 'time_complexity' and 'space_complexity' fields should return a sentence explaining the respective complexity and why the code has that complexity.
             
@@ -207,17 +215,14 @@ app.post("/api/generate", async (req: any, res: any) => {
               {
                 "code": "def merge(intervals): ...",
                 "thoughts": [
-                  "First, check if the input list is empty and return an empty list.",
-                  "Next, sort the intervals based on their start values.",
-                  "Iterate through the sorted list and merge overlapping intervals.",
-                  "Use a result list to store merged intervals.",
-                  "Return the merged intervals at the end."
+                  "First, I need to handle the edge case where the input list is empty.",
+                  "Next, I'll sort the intervals based on their start values. ...",
                 ],
                 "time_complexity": "O(n log n), where n is the number of intervals, due to the sorting step.",
                 "space_complexity": "O(n), where n is the number of intervals, as we need to store the merged intervals in a new list."
               }
             
-              Ensure that the response follows this exact JSON structure. and also ensure that `,
+              Ensure that the response follows this exact JSON structure.`,
             },
           ],
         }),
@@ -231,9 +236,11 @@ app.post("/api/generate", async (req: any, res: any) => {
     }
 
     const data = await openAiResponse.json();
-    const solution = JSON.parse(data.choices?.[0]?.message?.content || "{}");
 
-    console.log("Generated solution:", solution);
+    const responseContent = data.choices?.[0]?.message?.content || "{}";
+    const cleanedContent = responseContent.replace(/```json|```/g, "").trim();
+
+    const solution = JSON.parse(cleanedContent);
 
     return res.json(solution);
   } catch (error: any) {
